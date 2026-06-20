@@ -13,6 +13,7 @@ class OpenAIModelName(StrEnum):
 class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/quick_start/pricing"""
     DEEPSEEK_CHAT = "deepseek-chat"
+    DEEPSEEK_V4_FLASH = "deepseek-v4-flash"
 
 class OllamaModelName(StrEnum):
     """https://ollama.com/search"""

@@ -27,6 +27,7 @@ _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
     OpenAIModelName.GPT_4O: "gpt-4o",
     DeepseekModelName.DEEPSEEK_CHAT: "deepseek-chat",
+    DeepseekModelName.DEEPSEEK_V4_FLASH: "deepseek-chat",
     OllamaModelName.OLLAMA_GENERIC: "ollama",
     FakeModelName.FAKE: "fake",
     TongYiModelName.QWEN_PLUS: "qwen-plus",
@@ -49,7 +50,7 @@ ModelT: TypeAlias = (
 
 
 @cache
-def get_model(model_name: AllModelEnum, /) -> ModelT:
+def get_model(model_name: AllModelEnum, /) -> ModelT: # pyright: ignore[reportReturnType]
     """
     Get model by model name.
     Args:
@@ -73,19 +74,19 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             model=api_model_name,
             temperature=0.5,
             streaming=True,
-            api_key=settings.DEEPSEEK_API_KEY,
+            api_key=settings.DEEPSEEK_API_KEY, # type: ignore
         )
     
     if model_name in OllamaModelName:
         if settings.OLLAMA_BASE_URL:
             chat_ollama = ChatOllama(
-                model=settings.OLLAMA_MODEL, temperature=0.5, base_url=settings.OLLAMA_BASE_URL
+                model=settings.OLLAMA_MODEL, temperature=0.5, base_url=settings.OLLAMA_BASE_URL # type: ignore
             )
         else:
-            chat_ollama = ChatOllama(model=settings.OLLAMA_MODEL, temperature=0.5)
+            chat_ollama = ChatOllama(model=settings.OLLAMA_MODEL, temperature=0.5) # type: ignore
         return chat_ollama
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])
     
     if model_name in TongYiModelName:
-        return ChatTongyi(model=api_model_name, temperature=0.5, streaming=True)
+        return ChatTongyi(model=api_model_name, temperature=0.5, streaming=True) # type: ignore

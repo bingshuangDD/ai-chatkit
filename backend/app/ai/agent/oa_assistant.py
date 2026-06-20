@@ -29,12 +29,12 @@ class AgentState(MessagesState):
 tools = [get_user_info, get_user_department, search_handbook]
 
 def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    model = model.bind_tools(tools)
+    model = model.bind_tools(tools) # type: ignore
     preprocessor = RunnableLambda(
         lambda state: [SystemMessage(content=instructions)] + state["messages"],
         name="StateModifier",
     )
-    return preprocessor | model
+    return preprocessor | model # type: ignore
 
 instructions = """
     You are an assistant of a company's OA system, and your task is to help users query the administrative and personnel information within the company.
@@ -43,13 +43,14 @@ instructions = """
     You need to answer the users' questions and ensure the accuracy and completeness of the answers.
     You need to pay attention to the users' questions and avoid answering questions that they don't care about.
     The current time is：{current_time}
+    You'd better to use CHINESE to answer the users' questions.
 """
 
 
 async def call_model(state: AgentState, config: RunnableConfig) -> AgentState:
     """This node is to call llm model"""
 
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL)) # type: ignore
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 
