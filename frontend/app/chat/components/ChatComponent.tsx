@@ -7,6 +7,7 @@ import { useStreamChat } from '../hooks/useStreamChat';
 import MessageBubble from '../components/MessageBubble';
 import useChatActions from '../hooks/useChatActions';
 import { usePlayer } from '../../player/usePlayer';
+import { getAgentTheme } from '../../config/agentThemeConfig';
 
 const ChatComponent: React.FC<ChatComponentProps> = ({
   threadId,
@@ -61,6 +62,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   }, [currentThreadId]);
 
+  const theme = getAgentTheme(agentId);
+
   const { handleStream } = useStreamChat({
     currentThreadId,
     agentId,
@@ -96,7 +99,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
           </div>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} isStreaming={isStreaming} />
+          <MessageBubble key={msg.id} message={msg} isStreaming={isStreaming} theme={theme} />
         ))}
         <div ref={messagesEndRef} />
       </div>
@@ -105,6 +108,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         setInput={setInput}
         handleSend={handleSend}
         isStreaming={isStreaming}
+        theme={theme}
       />
     </div>
   );

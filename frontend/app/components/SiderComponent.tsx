@@ -12,6 +12,14 @@ interface SiderComponentProps {
   handlerNewChat: () => void;
   items: Array<{ key: string; label: React.ReactNode }>;
   onSelectSession: (key: string) => void;
+  theme: {
+    primary: string;
+    secondary: string;
+    surface: string;
+    text: string;
+    accent: string;
+    border: string;
+  };
 }
 
 const { Sider } = Layout;
@@ -23,7 +31,8 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
   handleDeleteSession, 
   handlerNewChat, 
   items,
-  onSelectSession
+  onSelectSession,
+  theme
 }) => {
   const { currentThreadId, setCurrentThreadId } = useLayoutContext()
 
@@ -33,17 +42,18 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
       collapsed={collapsed}
       onCollapse={onCollapse}
       width={200}
+      style={{ background: theme.primaryGradient, transition: 'background 0.5s ease' }}
     >
       {!collapsed && (
         <div className="logo flex items-center justify-center h-16 text-white text-lg">
           AI-CHATKIT
         </div>
       )}
-      <NewChatButton collapsed={collapsed} onClick={handlerNewChat} />
+      <NewChatButton collapsed={collapsed} onClick={handlerNewChat} theme={theme} />
       {!collapsed && (
         <Menu
           theme="dark"
-          className="max-h-[calc(100vh-180px)] overflow-y-auto"
+          className="max-h-[calc(100vh-180px)] overflow-y-auto transition-colors duration-500 themed-agent-menu"
           defaultSelectedKeys={[currentThreadId]}
           selectedKeys={[currentThreadId]}
           mode="inline"
@@ -51,6 +61,14 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
           onSelect={({ key }) => {
             onSelectSession(key);
           }}
+          style={{
+            background: theme.primaryGradient,
+            borderColor: theme.border,
+            color: theme.text,
+            '--selected-bg': theme.accent,
+            '--selected-color': '#ffffff',
+            '--selected-hover-bg': theme.accent + '33'
+          } as React.CSSProperties}
         />
       )}
     </Sider>

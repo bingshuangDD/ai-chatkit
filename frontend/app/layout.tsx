@@ -5,6 +5,7 @@ import React from "react";
 import { Layout, Menu, Button, Select } from "antd";
 import { useState, useEffect, useRef } from "react";
 import { BarsOutlined, PlusOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 import "./globals.css";
 import { v4 as uuidv4 } from "uuid";
 import { LayoutContext } from "./layout-context";
@@ -13,11 +14,13 @@ import AgentSelector from './components/AgentSelector';
 import SiderComponent from './components/SiderComponent';
 import { PlayerProvider } from "./player/PlayerContext";
 import GlobalPlayer from "./player/GlobalPlayer";
+import { getAgentTheme } from './config/agentThemeConfig';
 
 const { Header, Content } = Layout;
 
   // Since ReactNode may not be imported correctly, use the more generic type 'any' instead
 export default function RootLayout({ children }: { children: any }) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [sessions, setSessions] = useState(() => {
     try {
@@ -28,9 +31,10 @@ export default function RootLayout({ children }: { children: any }) {
   });
 
 
-  const [currentThreadId, setCurrentThreadId] = useState(null);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
 
   const [agentId, setAgentId] = useState("oa-assistant");
+  const theme = getAgentTheme(agentId);
 
 
   //listen new-chat event
@@ -58,13 +62,13 @@ export default function RootLayout({ children }: { children: any }) {
       lastUpdated: Date.now(),
     };
     // left sider auto select new session
-    setSessions((prev) => [...prev, newSession]);
+    setSessions((prev) => {
+      const updated = [...prev, newSession];
+      localStorage.setItem("chatSessions", JSON.stringify(updated));
+      return updated;
+    });
     setCurrentThreadId(newThreadId);
-    localStorage.setItem(
-      "chatSessions",
-      JSON.stringify([...sessions, newSession])
-    );
-    window.history.pushState({}, "", `/chat/${newThreadId}`);
+    router.push(`/chat/${newThreadId}`);
   };
 
   // delete session
@@ -74,19 +78,20 @@ export default function RootLayout({ children }: { children: any }) {
     );
     setSessions(newSessions);
     localStorage.setItem("chatSessions", JSON.stringify(newSessions));
-    localStorage.removeItem( "chatMessages-" + delThreadId);
-    if(newSessions.length > 0){
-      setCurrentThreadId([...newSessions].reverse()[0]?.threadId || "");
-      window.history.pushState({}, "", `/chat/${currentThreadId}`);
-    }else{
+    localStorage.removeItem("chatMessages-" + delThreadId);
+    if (newSessions.length > 0) {
+      const nextThreadId = [...newSessions].reverse()[0]?.threadId || "";
+      setCurrentThreadId(nextThreadId);
+      router.push(`/chat/${nextThreadId}`);
+    } else {
       setCurrentThreadId(null);
-      window.history.pushState({}, "", "/chat");
+      router.push("/chat");
     }
   };
 
   const handlerNewChat = () => {
     setCurrentThreadId(null);
-    window.history.pushState({}, "", "/chat");
+    router.push("/chat");
   };
 
   const selectAgent = (value: string) => {
@@ -110,7 +115,7 @@ export default function RootLayout({ children }: { children: any }) {
     <LayoutContext.Provider value={{ agentId, setAgentId, currentThreadId, setCurrentThreadId }}>
       <PlayerProvider>
         <html>
-          <body className="min-h-screen pb-20">
+          <body className="min-h-screen pb-20 transition-colors duration-500" style={{ background: theme.secondaryGradient, color: theme.text }}>
             <Layout style={{ minHeight: "auto" }}>
               <SiderComponent
                 collapsed={collapsed}
@@ -121,12 +126,12 @@ export default function RootLayout({ children }: { children: any }) {
                 items={items}
                 onSelectSession={(key) => {
                   setCurrentThreadId(key);
-                  const newPath = `/chat/${key}`;
-                  window.history.pushState({}, "", newPath);
+                  router.push(`/chat/${key}`);
                 }}
+                theme={theme}
               />
               <Layout>
-                <Header className="bg-white p-0 flex flex-nowrap">
+                <Header style={{ background: theme.surfaceGradient, color: theme.text, transition: 'background 0.5s ease' }} className="p-0 flex flex-nowrap">
                   <BarsOutlined
                     onClick={() => setCollapsed(!collapsed)}
                     className="ml-4 text-xl"
@@ -136,7 +141,7 @@ export default function RootLayout({ children }: { children: any }) {
                     <AgentSelector value={agentId} onChange={selectAgent} />
                   </div>
                 </Header>
-                <Content className="m-4 p-6 bg-white min-h-[calc(100vh-120px)]">
+                <Content className="m-4 p-6 min-h-[calc(100vh-120px)] transition-colors duration-500" style={{ background: theme.surfaceGradient }}>
                     {children}
                 </Content>
               </Layout>

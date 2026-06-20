@@ -5,15 +5,29 @@ import { PlusOutlined } from '@ant-design/icons';
 interface NewChatButtonProps {
   collapsed: boolean;
   onClick: () => void;
+  theme: {
+    primary: string;
+    secondary: string;
+    surface: string;
+    text: string;
+    accent: string;
+    border: string;
+  };
 }
 
-const NewChatButton: React.FC<NewChatButtonProps> = ({ collapsed, onClick }) => {
+const NewChatButton: React.FC<NewChatButtonProps> = ({ collapsed, onClick, theme }) => {
   return (
     <Button
       type="primary"
       onClick={onClick}
       icon={<PlusOutlined />}
-      style={{ margin: "16px", width: collapsed ? "40px" : "calc(100% - 32px)" }}
+      style={{
+        margin: "16px",
+        width: collapsed ? "40px" : "calc(100% - 32px)",
+        background: theme.accentGradient,
+        borderColor: theme.border,
+        transition: 'background 0.5s ease',
+      }}
       shape={collapsed ? "circle" : "round"}
     >
       {!collapsed && "NEW CHAT"}
