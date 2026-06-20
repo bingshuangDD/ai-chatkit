@@ -1,12 +1,15 @@
 import { message } from "antd";
+import type React from "react";
 import { Message } from "../types/chat.types";
+import { PlayerCommand } from "../../player/types";
 
 interface UseStreamChatProps {
   currentThreadId: string;
   agentId: string;
-  setMessages: (messages: Message[]) => void;
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   isStreaming: boolean;
   setIsStreaming: (value: boolean) => void;
+  executePlayerCommand: (command: PlayerCommand) => Promise<void>;
 }
 
 
@@ -16,6 +19,7 @@ export const useStreamChat = ({
   setMessages,
   isStreaming,
   setIsStreaming,
+  executePlayerCommand,
 }: UseStreamChatProps) => {
   const handleStream = async (input: string) => {
     if (!input.trim() || isStreaming) return;
@@ -63,6 +67,9 @@ export const useStreamChat = ({
                 break;
               case "token":
                 handleTokenData(data.content);
+                break;
+              case "player_command":
+                handlePlayerCommand(data.content);
                 break;
               case "end":
                 setIsStreaming(false);
@@ -116,6 +123,9 @@ export const useStreamChat = ({
       );
     }
     if (content.type === "tool") {
+      if (isPlayerToolPayload(content.content)) {
+        return;
+      }
       setMessages((prev) => {
         const updatedCalls = prev[prev.length - 1].toolCall.calls.map((call) =>
           call.id === content.tool_call_id
@@ -131,6 +141,24 @@ export const useStreamChat = ({
             : msg
         );
       });
+    }
+  };
+
+  const handlePlayerCommand = async (command: PlayerCommand) => {
+    try {
+      await executePlayerCommand(command);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "播放器命令执行失败";
+      message.error(errorMessage);
+    }
+  };
+
+  const isPlayerToolPayload = (content: string) => {
+    try {
+      const payload = JSON.parse(content.replaceAll("'", '"'));
+      return payload?.kind === "player_command";
+    } catch {
+      return content.includes("player_command");
     }
   };
 

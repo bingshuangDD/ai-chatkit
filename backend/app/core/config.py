@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     
     CHROMA_PATH: str | None = None
     
+    MUSIC_ENABLE_MCP: bool = True
+    MUSIC_MCP_COMMAND: str = "uv"
+    MUSIC_MCP_SERVER_PATH: str = "D:/Agent_ai-chatkit/ai-chatkit/backend/mcp_servers/music_mcp_server.py"
+    MUSIC_ALLOWED_MEDIA_DOMAINS: str | None = None
+    MUSIC_MCP_TIMEOUT_SECONDS: int = 15
+    
     def is_dev(self):
         return self.DEV
 

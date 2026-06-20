@@ -6,6 +6,7 @@ import { Message, ChatComponentProps } from '../types/chat.types';
 import { useStreamChat } from '../hooks/useStreamChat';
 import MessageBubble from '../components/MessageBubble';
 import useChatActions from '../hooks/useChatActions';
+import { usePlayer } from '../../player/usePlayer';
 
 const ChatComponent: React.FC<ChatComponentProps> = ({
   threadId,
@@ -15,6 +16,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef(null);
   const { agentId, setAgentId, currentThreadId, setCurrentThreadId } = useLayoutContext()
+  const { executeCommand } = usePlayer();
 
   useEffect(() => {
     if(threadId){
@@ -59,7 +61,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   }, [currentThreadId]);
 
-  const { handleStream } = useStreamChat({ currentThreadId, agentId, setMessages, isStreaming, setIsStreaming });
+  const { handleStream } = useStreamChat({
+    currentThreadId,
+    agentId,
+    setMessages,
+    isStreaming,
+    setIsStreaming,
+    executePlayerCommand: executeCommand,
+  });
 
   const handleSend = async () => {
     setInput("");

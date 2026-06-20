@@ -11,6 +11,8 @@ import { LayoutContext } from "./layout-context";
 import SessionListItem from './components/SessionListItem';
 import AgentSelector from './components/AgentSelector';
 import SiderComponent from './components/SiderComponent';
+import { PlayerProvider } from "./player/PlayerContext";
+import GlobalPlayer from "./player/GlobalPlayer";
 
 const { Header, Content } = Layout;
 
@@ -106,40 +108,43 @@ export default function RootLayout({ children }: { children: any }) {
 
   return (
     <LayoutContext.Provider value={{ agentId, setAgentId, currentThreadId, setCurrentThreadId }}>
-      <html>
-        <body className="min-h-screen">
-          <Layout style={{ minHeight: "auto" }}>
-            <SiderComponent
-              collapsed={collapsed}
-              onCollapse={setCollapsed}
-              sessions={sessions}
-              handleDeleteSession={handleDeleteSession}
-              handlerNewChat={handlerNewChat}
-              items={items}
-              onSelectSession={(key) => {
-                setCurrentThreadId(key);
-                const newPath = `/chat/${key}`;
-                window.history.pushState({}, "", newPath);
-              }}
-            />
-            <Layout>
-              <Header className="bg-white p-0 flex flex-nowrap">
-                <BarsOutlined
-                  onClick={() => setCollapsed(!collapsed)}
-                  className="ml-4 text-xl"
-                />
-                <div className="flex items-center ml-8 flex-none shrink-0">
-                  <span className="text-base">AI-Agent:</span>
-                  <AgentSelector value={agentId} onChange={selectAgent} />
-                </div>
-              </Header>
-              <Content className="m-4 p-6 bg-white min-h-[calc(100vh-120px)]">
-                  {children}
-              </Content>
+      <PlayerProvider>
+        <html>
+          <body className="min-h-screen pb-20">
+            <Layout style={{ minHeight: "auto" }}>
+              <SiderComponent
+                collapsed={collapsed}
+                onCollapse={setCollapsed}
+                sessions={sessions}
+                handleDeleteSession={handleDeleteSession}
+                handlerNewChat={handlerNewChat}
+                items={items}
+                onSelectSession={(key) => {
+                  setCurrentThreadId(key);
+                  const newPath = `/chat/${key}`;
+                  window.history.pushState({}, "", newPath);
+                }}
+              />
+              <Layout>
+                <Header className="bg-white p-0 flex flex-nowrap">
+                  <BarsOutlined
+                    onClick={() => setCollapsed(!collapsed)}
+                    className="ml-4 text-xl"
+                  />
+                  <div className="flex items-center ml-8 flex-none shrink-0">
+                    <span className="text-base">AI-Agent:</span>
+                    <AgentSelector value={agentId} onChange={selectAgent} />
+                  </div>
+                </Header>
+                <Content className="m-4 p-6 bg-white min-h-[calc(100vh-120px)]">
+                    {children}
+                </Content>
+              </Layout>
             </Layout>
-          </Layout>
-        </body>
-      </html>
+            <GlobalPlayer />
+          </body>
+        </html>
+      </PlayerProvider>
     </LayoutContext.Provider>
 
   );

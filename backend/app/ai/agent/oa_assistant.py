@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from ai.llm import get_model, settings
 from ai.tools.oa_tools import get_user_department, get_user_info, search_handbook
+from ai.tools.music_tools import play_music, pause_music, resume_music, stop_music
 
 
 from langchain.globals import set_debug
@@ -26,7 +27,15 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 class AgentState(MessagesState):
     """State of the agent."""
 
-tools = [get_user_info, get_user_department, search_handbook]
+tools = [
+    get_user_info,
+    get_user_department,
+    search_handbook,
+    play_music,
+    pause_music,
+    resume_music,
+    stop_music,
+]
 
 def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
     model = model.bind_tools(tools) # type: ignore
@@ -42,6 +51,10 @@ instructions = """
     It is not allowed to forge the relevant regulations of the company at will to avoid misleading users out of thin air.
     You need to answer the users' questions and ensure the accuracy and completeness of the answers.
     You need to pay attention to the users' questions and avoid answering questions that they don't care about.
+    When the user asks to play music, you must call the play_music tool.
+    When the user asks to pause, resume, or stop music playback, you must call the corresponding player control tool.
+    You must not invent music playback URLs.
+    If a music tool returns a failure, explain the failure reason in Chinese.
     The current time is：{current_time}
     You'd better to use CHINESE to answer the users' questions.
 """

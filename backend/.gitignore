@@ -11,4 +11,5 @@ wheels/
 .env
 
 #test files
-design/
+
+/docs

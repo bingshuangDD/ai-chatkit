@@ -4,3 +4,7 @@
 
 /frontend/.next
 /frontend/node_modules
+
+/docs
+/resource
+/design

@@ -15,8 +15,35 @@ from typing import Any, Union, Dict, List, Optional
 from utils.chat_utils import langchain_to_chat_message, remove_tool_calls, convert_message_content_to_string
 from collections.abc import AsyncGenerator
 import json
+import ast
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_tool_payload(content: Any) -> dict[str, Any] | None:
+    if isinstance(content, dict):
+        return content
+    if not isinstance(content, str):
+        return None
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        try:
+            parsed = ast.literal_eval(content)
+        except (ValueError, SyntaxError):
+            return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _extract_player_command(message: Any) -> dict[str, Any] | None:
+    if not isinstance(message, ToolMessage):
+        return None
+    payload = _parse_tool_payload(message.content)
+    if not payload:
+        return None
+    if payload.get("kind") == "player_command" and isinstance(payload.get("command"), dict):
+        return payload["command"]
+    return None
 
 
 chat_router = APIRouter(prefix="/chat", tags=["chat"],)
@@ -175,6 +202,10 @@ async def message_generator(
                 new_messages = [event]
 
             for message in new_messages:
+                player_command = _extract_player_command(message)
+                if player_command:
+                    yield f"data: {json.dumps({'type': 'player_command', 'content': player_command}, ensure_ascii=False)}\n\n"
+                    continue
                 try:
                     chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
