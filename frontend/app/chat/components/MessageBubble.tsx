@@ -15,7 +15,7 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, theme }) => {
-  const { type, content, toolCall, images } = message;
+  const { type, content, toolCall, images, generatedImages } = message;
   const { agentId } = useLayoutContext();
 
   // AI消息时，检查是否有自定义头像
@@ -57,6 +57,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, the
                   <img
                     src={image}
                     alt={`attachment ${index + 1}`}
+                    className="max-h-64 max-w-64 rounded-lg object-contain"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+          {generatedImages && generatedImages.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {generatedImages.map((image, index) => (
+                <button
+                  key={`gen-${image.slice(-32)}-${index}`}
+                  type="button"
+                  onClick={() => window.open(image, "_blank")}
+                  className="block rounded-lg border p-0 hover:opacity-90"
+                  style={{ borderColor: theme.border }}
+                >
+                  <img
+                    src={image}
+                    alt={`生成图 ${index + 1}`}
                     className="max-h-64 max-w-64 rounded-lg object-contain"
                   />
                 </button>

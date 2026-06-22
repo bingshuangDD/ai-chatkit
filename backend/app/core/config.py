@@ -48,6 +48,21 @@ class Settings(BaseSettings):
     MUSIC_ALLOWED_MEDIA_DOMAINS: str | None = None
     MUSIC_MCP_TIMEOUT_SECONDS: int = 15
 
+    # --- Jimeng (DreamSeed) image generation ---
+    ARK_API_KEY: str | None = None
+    JIMENG_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
+    JIMENG_MODEL: str = "doubao-seedream-5-0-260128"
+    JIMENG_DEFAULT_SIZE: str = "2K"
+    JIMENG_OUTPUT_FORMAT: str = "png"
+    JIMENG_WATERMARK: bool = False
+
+    # --- TOS / object storage for reference image staging ---
+    TOS_ACCESS_KEY_ID: str | None = None
+    TOS_SECRET_ACCESS_KEY: str | None = None
+    TOS_ENDPOINT: str | None = None
+    TOS_BUCKET: str | None = None
+    TOS_PUBLIC_BASE_URL: str | None = None
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def parse_debug(cls, value: Any) -> Any:

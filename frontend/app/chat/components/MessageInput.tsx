@@ -11,6 +11,8 @@ interface MessageInputProps {
   theme: AgentTheme;
   images: string[];
   onImagesChange: (images: string[]) => void;
+  onGenerateImage?: () => void;
+  isGeneratingImage?: boolean;
 }
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -24,6 +26,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   theme,
   images,
   onImagesChange,
+  onGenerateImage,
+  isGeneratingImage = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,7 +116,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         <Button
           icon={<PictureOutlined />}
           onClick={() => fileInputRef.current?.click()}
-          disabled={isStreaming}
+          disabled={isStreaming || isGeneratingImage}
           className="h-24 w-12 rounded-lg"
           style={{ borderColor: theme.border, color: theme.text }}
         />
@@ -142,7 +146,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
               setInput(input + "\n");
             }
           }}
-          disabled={isStreaming}
+          disabled={isStreaming || isGeneratingImage}
           className="flex-1 min-h-[80px] p-3 rounded-lg transition-colors duration-500"
           style={{
             borderColor: theme.border,
@@ -151,6 +155,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }}
           autoSize={{ minRows: 3, maxRows: 5 }}
         />
+        {onGenerateImage && (
+          <Button
+            type="default"
+            style={{
+              borderColor: theme.accent,
+              color: theme.accent,
+              fontWeight: 600,
+            }}
+            onClick={onGenerateImage}
+            disabled={(!input.trim() && images.length === 0) || isStreaming || isGeneratingImage}
+            loading={isGeneratingImage}
+            className="h-24 px-4 rounded-lg transition-colors"
+          >
+            参考图生图
+          </Button>
+        )}
         <Button
           type="primary"
           style={{
@@ -160,7 +180,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
             transition: 'background 0.5s ease',
           }}
           onClick={handleSend}
-          disabled={(!input.trim() && images.length === 0) || isStreaming}
+          disabled={(!input.trim() && images.length === 0) || isStreaming || isGeneratingImage}
           className="h-24 px-6 rounded-lg transition-colors font-semibold shadow-md"
         >
           {isStreaming ? "generating..." : "send"}

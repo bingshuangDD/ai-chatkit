@@ -16,6 +16,13 @@ interface HandleStreamOptions {
   images?: string[];
 }
 
+type StreamEvent =
+  | { type: "message"; content: any }
+  | { type: "token"; content: string }
+  | { type: "player_command"; content: PlayerCommand }
+  | { type: "error"; content?: string }
+  | { type: "end" };
+
 export const useStreamChat = ({
   agentId,
   setMessages,
@@ -46,9 +53,7 @@ export const useStreamChat = ({
     if (options.appendMessages !== false) {
       setMessages((prev: Message[]) => [...prev, newUserMessage, newAiMessage]);
     } else {
-      setMessages((prev: Message[]) =>
-        prev.length > 0 ? prev : [newUserMessage, newAiMessage]
-      );
+      setMessages([newUserMessage, newAiMessage]);
     }
 
     try {
@@ -65,38 +70,73 @@ export const useStreamChat = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestMsg),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body received from chat stream.");
+      }
+
       const decoder = new TextDecoder();
+      let buffer = "";
+      let streamEnded = false;
 
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const dataChunk = decoder.decode(value, { stream: true });
+      const processSseBuffer = (rawBuffer: string, flush = false) => {
+        const events = rawBuffer.split(/\r?\n\r?\n/);
+        const remainder = flush ? "" : events.pop() ?? "";
 
-        dataChunk.split("\n").forEach((line) => {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.replace("data: ", ""));
-            switch (data.type) {
-              case "message":
-                handleMessageData(data.content);
-                break;
-              case "token":
-                handleTokenData(data.content);
-                break;
-              case "player_command":
-                handlePlayerCommand(data.content);
-                break;
-              case "end":
-                setIsStreaming(false);
-                reader.cancel();
-                break;
-            }
+        events.forEach((eventBlock) => {
+          const payload = eventBlock
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.replace(/^data:\s?/, ""))
+            .join("\n");
+
+          if (!payload) {
+            return;
+          }
+
+          const data = JSON.parse(payload) as StreamEvent;
+          switch (data.type) {
+            case "message":
+              handleMessageData(data.content);
+              break;
+            case "token":
+              handleTokenData(data.content);
+              break;
+            case "player_command":
+              handlePlayerCommand(data.content);
+              break;
+            case "error":
+              throw new Error(data.content || "Chat stream returned an error.");
+            case "end":
+              streamEnded = true;
+              setIsStreaming(false);
+              break;
           }
         });
+
+        return remainder;
+      };
+
+      while (!streamEnded) {
+        const { done, value } = await reader.read();
+        if (done) {
+          buffer += decoder.decode();
+          processSseBuffer(buffer, true);
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+
+        buffer = processSseBuffer(buffer);
       }
     } catch (error) {
       console.error(" Request Failed:", error);
-      message.error(" Request Failed, Please try again later.");
+      const errorMessage = error instanceof Error ? error.message : "Request Failed, Please try again later.";
+      message.error(errorMessage);
       setIsStreaming(false);
     }
   };
