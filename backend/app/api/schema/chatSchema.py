@@ -10,6 +10,10 @@ class UserInput(BaseModel):
     message: str = Field(
         description="input message"
     )
+    images: list[str] | None = Field(
+        description="Image attachments as data URLs or raw base64 strings.",
+        default=None,
+    )
 
     thread_id: str | None = Field(
         description="Thread ID is used for persistence and continuing multi-round conversations",
@@ -25,6 +29,11 @@ class UserInput(BaseModel):
         description="Additional configuration to pass through to the agent",
         default={},
         examples=[{"spicy_level": 0.8}],
+    )
+
+    prompt_cache_key: str | None = Field(
+        description="Optional prompt cache key for Kimi Code Plan / Coding Agent to improve cache hit rate.",
+        default=None,
     )
     
 class ToolCall(TypedDict):
@@ -48,6 +57,10 @@ class ChatMessage(BaseModel):
     content: str = Field(
         description="Content of the message.",
         examples=["Hello, world!"],
+    )
+    images: list[str] | None = Field(
+        description="Image attachments as data URLs.",
+        default=None,
     )
     tool_calls: list[ToolCall] = Field(
         description="Tool calls in the message.",

@@ -5,8 +5,8 @@ import { createContext, useContext } from 'react'
 type LayoutContextType = {
   agentId: string
   setAgentId: (agentId: string) => void
-  currentThreadId: string
-  setCurrentThreadId: (currentThreadId: string) => void
+  currentThreadId: string | null
+  setCurrentThreadId: (currentThreadId: string | null) => void
 }
 
 export const LayoutContext = createContext<LayoutContextType | null>(null)

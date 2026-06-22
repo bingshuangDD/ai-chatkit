@@ -29,6 +29,18 @@ export const agentThemes: Record<string, AgentTheme> = {
     accentGradient: "linear-gradient(180deg, #E16AB2 0%, #F8C1DD 100%)",
     border: "#F0B4D2"
   },
+  "character-mornye": {
+    primary: "#9791BD",
+    primaryGradient: "linear-gradient(180deg, #9791BD 0%, #DCD9EE 100%)",
+    secondary: "#F3F1FA",
+    secondaryGradient: "linear-gradient(180deg, #F3F1FA 0%, #FBFAFF 100%)",
+    surface: "#FBFAFF",
+    surfaceGradient: "linear-gradient(180deg, #FBFAFF 0%, #F2F0F8 100%)",
+    text: "#332F4C",
+    accent: "#7F78AB",
+    accentGradient: "linear-gradient(180deg, #9791BD 0%, #C8C4E1 100%)",
+    border: "#C8C4E1"
+  },
   "oa-assistant": {
     primary: "#1D4ED8",
     primaryGradient: "linear-gradient(180deg, #2563EB 0%, #93C5FD 100%)",

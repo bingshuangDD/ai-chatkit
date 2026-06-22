@@ -3,6 +3,7 @@ from core.config import settings
 from fastapi import APIRouter, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import StreamingResponse
+from openai import AuthenticationError
 
 from uuid import UUID, uuid4
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -16,8 +17,71 @@ from utils.chat_utils import langchain_to_chat_message, remove_tool_calls, conve
 from collections.abc import AsyncGenerator
 import json
 import ast
+import base64
 
 logger = logging.getLogger(__name__)
+
+MOONSHOT_AUTH_ERROR_MESSAGE = (
+    "Kimi/Moonshot authentication failed. Please check MOONSHOT_API_KEY in backend/.env, "
+    "make sure the key is valid for https://api.moonshot.cn/v1, then restart the backend server."
+)
+
+
+def _guess_image_mime(raw_base64: str) -> str:
+    try:
+        header = base64.b64decode(raw_base64[:32], validate=False)[:12]
+    except Exception:
+        return "image/jpeg"
+    if header.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+        return "image/gif"
+    if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
+
+
+def _normalize_image_url(image: str) -> str:
+    image = image.strip()
+    if image.startswith("data:image/"):
+        return image
+    return f"data:{_guess_image_mime(image)};base64,{image}"
+
+
+def _build_human_message_content(message: str, images: list[str]) -> list[dict[str, Any]]:
+    content_blocks: list[dict[str, Any]] = []
+    if message:
+        content_blocks.append({"type": "text", "text": message})
+    else:
+        content_blocks.append({"type": "text", "text": "请分析这些图片。"})
+
+    for image in images:
+        content_blocks.append(
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": _normalize_image_url(image),
+                    "detail": "auto",
+                },
+            }
+        )
+    return content_blocks
+
+
+def _content_has_image(content: Any) -> bool:
+    if not isinstance(content, list):
+        return False
+    for content_item in content:
+        if isinstance(content_item, dict) and content_item.get("type") == "image_url":
+            return True
+    return False
+
+
+def _state_has_images(state: Any) -> bool:
+    messages = getattr(state, "values", {}).get("messages", [])
+    return any(_content_has_image(getattr(message, "content", None)) for message in messages)
 
 
 def _parse_tool_payload(content: Any) -> dict[str, Any] | None:
@@ -76,6 +140,9 @@ async def invoke(user_input: UserInput) -> ChatMessage:
 
         output.run_id = str(run_id)
         return output
+    except AuthenticationError as e:
+        logger.error(f"Moonshot authentication failed: {e}")
+        raise HTTPException(status_code=401, detail=MOONSHOT_AUTH_ERROR_MESSAGE)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
@@ -116,8 +183,13 @@ async def _handle_input(
     """
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
+    images = [image for image in (user_input.images or []) if image and image.strip()]
+    has_images = len(images) > 0
 
-    configurable = {"thread_id": thread_id, "model": settings.DEFAULT_MODEL}
+    configurable = {
+        "thread_id": thread_id,
+        "model": settings.DEFAULT_MODEL,
+    }
 
     # Check whether agent_config exists in user_input
     if user_input.agent_config:
@@ -132,13 +204,25 @@ async def _handle_input(
     # If there is no intersection, update the content of user_input.agent_config to the configurable dictionary
     configurable.update(user_input.agent_config)
 
+    # Check for interrupts that need to be resumed
+    state_config = RunnableConfig(configurable=configurable, run_id=run_id)
+    state = await agent.aget_state(config=state_config)
+    history_has_images = _state_has_images(state)
+    if has_images or history_has_images:
+        configurable["model"] = settings.VISION_MODEL
+
+    # Kimi Code Plan: pass prompt_cache_key to model via model_kwargs in RunnableConfig
+    model_kwargs: dict[str, Any] = {}
+    if getattr(user_input, "prompt_cache_key", None):
+        model_kwargs["prompt_cache_key"] = user_input.prompt_cache_key
+
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,
     )
+    if model_kwargs:
+        config["model_kwargs"] = model_kwargs
 
-    # Check for interrupts that need to be resumed
-    state = await agent.aget_state(config=config)
     interrupted_tasks = [
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
     ]
@@ -146,6 +230,8 @@ async def _handle_input(
     if interrupted_tasks:
         # assume user input is response to resume agent execution from interrupt
         input = Command(resume=user_input.message)
+    elif has_images:
+        input = {"messages": [HumanMessage(content=_build_human_message_content(user_input.message, images))]}
     else:
         input = {"messages": [HumanMessage(content=user_input.message)]}
 
@@ -237,6 +323,9 @@ async def message_generator(
         # Handle CancelledError gracefully
         logger.info("Stream cancelled")
         return
+    except AuthenticationError as e:
+        logger.error(f"Moonshot authentication failed in message generator: {e}")
+        yield f"data: {json.dumps({'type': 'error', 'content': MOONSHOT_AUTH_ERROR_MESSAGE})}\n\n"
     except Exception as e:
         logger.error(f"Error in message generator: {e}")
         yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"

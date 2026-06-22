@@ -5,7 +5,6 @@ import { useLayoutContext } from '../../layout-context';
 import { Message, ChatComponentProps } from '../types/chat.types';
 import { useStreamChat } from '../hooks/useStreamChat';
 import MessageBubble from '../components/MessageBubble';
-import useChatActions from '../hooks/useChatActions';
 import { usePlayer } from '../../player/usePlayer';
 import { getAgentTheme } from '../../config/agentThemeConfig';
 
@@ -13,17 +12,91 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   threadId,
 }) => {
   const [input, setInput] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const consumedPendingThreadRef = useRef<string | null>(null);
   const messagesEndRef = useRef(null);
   const { agentId, setAgentId, currentThreadId, setCurrentThreadId } = useLayoutContext()
   const { executeCommand } = usePlayer();
+  const routeThreadId = threadId || null;
+
+  const getPendingMessageKey = (id: string) => `chatPendingMessage-${id}`;
+  const getMessageStorageKey = (id: string) => `chatMessages-${id}`;
+
+  const createInitialMessages = (content: string, initialImages: string[] = []): Message[] => [
+    {
+      id: `user_${Date.now()}`,
+      type: "user",
+      content,
+      images: initialImages,
+    },
+    {
+      id: `ai_${Date.now()}`,
+      type: "ai",
+      content: "",
+    },
+  ];
+
+  const { handleStream } = useStreamChat({
+    agentId,
+    setMessages,
+    isStreaming,
+    setIsStreaming,
+    executePlayerCommand: executeCommand,
+  });
 
   useEffect(() => {
-    if(threadId){
-      setCurrentThreadId(threadId)
+    if (routeThreadId) {
+      setCurrentThreadId(routeThreadId);
+    } else {
+      setCurrentThreadId(null);
     }
-  });
+  }, [routeThreadId]);
+
+  useEffect(() => {
+    if (!routeThreadId) {
+      return;
+    }
+
+    const storedMessages = localStorage.getItem(getMessageStorageKey(routeThreadId));
+
+    if (storedMessages) {
+      setMessages(JSON.parse(storedMessages));
+    } else {
+      setMessages([]);
+    }
+  }, [routeThreadId]);
+
+  useEffect(() => {
+    if (
+      !routeThreadId ||
+      consumedPendingThreadRef.current === routeThreadId
+    ) {
+      return;
+    }
+
+    const pendingMessageKey = getPendingMessageKey(routeThreadId);
+    const pendingMessage = localStorage.getItem(pendingMessageKey);
+    const pendingImages = JSON.parse(localStorage.getItem(`${pendingMessageKey}-images`) || "[]");
+
+    if (!pendingMessage && pendingImages.length === 0) {
+      return;
+    }
+
+    const streamTimer = window.setTimeout(() => {
+      consumedPendingThreadRef.current = routeThreadId;
+      localStorage.removeItem(pendingMessageKey);
+      localStorage.removeItem(`${pendingMessageKey}-images`);
+      handleStream(pendingMessage || "", routeThreadId, { appendMessages: false, images: pendingImages })
+        .catch((error) => {
+          console.error("handleStream failed after initiating thread:", error);
+          setIsStreaming(false);
+        })
+    }, 0);
+
+    return () => window.clearTimeout(streamTimer);
+  }, [routeThreadId]);
   
   console.log("chat agentId", agentId)
   console.log("chat threadId", currentThreadId)
@@ -35,57 +108,48 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   useEffect(() => scrollToBottom(), [messages]);
 
   useEffect(() => {
-    if(messages.length > 0){
-      localStorage.setItem(
-        "chatMessages-" + currentThreadId,
-        JSON.stringify(messages)
-      );
-    } 
-  }, [messages]);
-
-
-  const { handleNewChat } = useChatActions({ setMessages, setInput, isStreaming, setIsStreaming });
-
-  useEffect(() => {
-    console.log("currentThreadId", currentThreadId);
-    if(!currentThreadId || currentThreadId === "") {
-      handleNewChat();
+    if (!routeThreadId) {
       return;
     }
-    const storedMessages = localStorage.getItem(
-      "chatMessages-" + currentThreadId
-    );
-    if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
-    } else {
-      setMessages([]);
+    if (messages.length > 0) {
+      localStorage.setItem(
+        getMessageStorageKey(routeThreadId),
+        JSON.stringify(messages)
+      );
     }
-  }, [currentThreadId]);
+  }, [messages, routeThreadId]);
+
 
   const theme = getAgentTheme(agentId);
 
-  const { handleStream } = useStreamChat({
-    currentThreadId,
-    agentId,
-    setMessages,
-    isStreaming,
-    setIsStreaming,
-    executePlayerCommand: executeCommand,
-  });
-
   const handleSend = async () => {
-    setInput("");
+    if ((!input.trim() && images.length === 0) || isStreaming) return;
 
-    setIsStreaming(true);
-    if (!currentThreadId) {
-      setCurrentThreadId(uuidv4());
+    const threadIdToUse = routeThreadId || uuidv4();
+    const currentImages = [...images];
+    if (!routeThreadId) {
+      const initialMessages = createInitialMessages(input, currentImages);
+      localStorage.setItem(`chatPendingMessage-${threadIdToUse}`, input);
+      localStorage.setItem(`chatPendingMessage-${threadIdToUse}-images`, JSON.stringify(currentImages));
+      localStorage.setItem(
+        getMessageStorageKey(threadIdToUse),
+        JSON.stringify(initialMessages)
+      );
       window.dispatchEvent(
         new CustomEvent("add-session", {
-          detail: { threadId: currentThreadId, msg: input },
+          detail: { threadId: threadIdToUse, msg: input },
         })
       );
+      setInput("");
+      setImages([]);
+      return;
     }
-    await handleStream(input);
+
+    const messageToSend = input;
+    setInput("");
+    setImages([]);
+    setIsStreaming(true);
+    await handleStream(messageToSend, threadIdToUse, { images: currentImages });
   };
 
   return (
@@ -109,6 +173,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         handleSend={handleSend}
         isStreaming={isStreaming}
         theme={theme}
+        images={images}
+        onImagesChange={setImages}
       />
     </div>
   );

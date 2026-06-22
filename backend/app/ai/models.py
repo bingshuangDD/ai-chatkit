@@ -23,13 +23,24 @@ class OllamaModelName(StrEnum):
 class FakeModelName(StrEnum):
     """Fake model for testing."""
     FAKE = "fake"
-    
+
 class TongYiModelName(StrEnum):
     """TongYi model"""
     QWEN_PLUS = "qwen-plus"
     QWEN_MAX = "qwen-max"
-    
 
+
+class KimiModelName(StrEnum):
+    """https://platform.moonshot.cn/docs/pricing"""
+
+    KIMI_FOR_CODING = "kimi-for-coding"
+    KIMI_K2 = "kimi-k2-instruct"
+    KIMI_K2_6 = "kimi-k2.6"
+    KIMI_K2_7_CODE = "kimi-k2.7-code"
+    KIMI_K2_7_CODE_HIGHSPEED = "kimi-k2.7-code-highspeed"
+    MOONSHOT_V1_8K = "moonshot-v1-8k"
+    MOONSHOT_V1_32K = "moonshot-v1-32k"
+    MOONSHOT_V1_128K = "moonshot-v1-128k"
 
 
 AllModelEnum: TypeAlias = (
@@ -38,4 +49,5 @@ AllModelEnum: TypeAlias = (
     | OllamaModelName
     | FakeModelName
     | TongYiModelName
+    | KimiModelName
 )

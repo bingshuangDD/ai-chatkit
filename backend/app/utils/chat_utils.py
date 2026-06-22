@@ -22,6 +22,26 @@ def convert_message_content_to_string(content: str | list[str | dict]) -> str:
             text.append(content_item["text"])
     return "".join(text)
 
+def extract_images_from_content(content: str | list[str | dict]) -> list[str] | None:
+    if isinstance(content, str):
+        return None
+
+    images: list[str] = []
+    for content_item in content:
+        if not isinstance(content_item, dict):
+            continue
+        if content_item.get("type") != "image_url":
+            continue
+        image_url = content_item.get("image_url")
+        if isinstance(image_url, dict):
+            url = image_url.get("url")
+        else:
+            url = None
+        if isinstance(url, str) and url:
+            images.append(url)
+
+    return images or None
+
 def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
     """Create a ChatMessage from a LangChain message."""
     match message:
@@ -29,6 +49,7 @@ def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
             human_message = ChatMessage(
                 type="human",
                 content=convert_message_content_to_string(message.content),
+                images=extract_images_from_content(message.content),
             )
             return human_message
         case AIMessage():

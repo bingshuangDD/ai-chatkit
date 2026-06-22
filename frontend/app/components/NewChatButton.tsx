@@ -1,18 +1,12 @@
 import React from 'react';
 import { Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { AgentTheme } from '../config/agentThemeConfig';
 
 interface NewChatButtonProps {
   collapsed: boolean;
   onClick: () => void;
-  theme: {
-    primary: string;
-    secondary: string;
-    surface: string;
-    text: string;
-    accent: string;
-    border: string;
-  };
+  theme: AgentTheme;
 }
 
 const NewChatButton: React.FC<NewChatButtonProps> = ({ collapsed, onClick, theme }) => {

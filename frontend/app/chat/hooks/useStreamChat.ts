@@ -4,7 +4,6 @@ import { Message } from "../types/chat.types";
 import { PlayerCommand } from "../../player/types";
 
 interface UseStreamChatProps {
-  currentThreadId: string;
   agentId: string;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   isStreaming: boolean;
@@ -12,37 +11,53 @@ interface UseStreamChatProps {
   executePlayerCommand: (command: PlayerCommand) => Promise<void>;
 }
 
+interface HandleStreamOptions {
+  appendMessages?: boolean;
+  images?: string[];
+}
 
 export const useStreamChat = ({
-  currentThreadId,
   agentId,
   setMessages,
   isStreaming,
   setIsStreaming,
   executePlayerCommand,
 }: UseStreamChatProps) => {
-  const handleStream = async (input: string) => {
-    if (!input.trim() || isStreaming) return;
+  const handleStream = async (
+    input: string,
+    threadId: string,
+    options: HandleStreamOptions = {}
+  ) => {
+    if ((!input.trim() && !options.images?.length) || isStreaming) return;
     setIsStreaming(true);
 
     const newUserMessage: Message = {
       id: `user_${Date.now()}`,
       type: "user",
       content: input,
+      images: options.images,
     };
     const newAiMessage: Message = {
       id: `ai_${Date.now()}`,
       type: "ai",
       content: "",
     };
-    setMessages((prev: Message[]) => [...prev, newUserMessage, newAiMessage]);
+
+    if (options.appendMessages !== false) {
+      setMessages((prev: Message[]) => [...prev, newUserMessage, newAiMessage]);
+    } else {
+      setMessages((prev: Message[]) =>
+        prev.length > 0 ? prev : [newUserMessage, newAiMessage]
+      );
+    }
 
     try {
       const requestMsg = {
-        thread_id: currentThreadId,
+        thread_id: threadId,
         role: "user",
         message: input,
         agent_id: agentId,
+        images: options.images || [],
       };
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/stream`, {
@@ -87,6 +102,16 @@ export const useStreamChat = ({
   };
 
   const handleMessageData = (content: any) => {
+    if (content.type === "human" && content.images?.length > 0) {
+      setMessages((prev) =>
+        prev.map((msg, i) =>
+          i === Math.max(prev.length - 2, 0)
+            ? { ...msg, images: content.images }
+            : msg
+        )
+      );
+      return;
+    }
     if (content.type === "ai" && content.tool_calls.length > 0) {
       setMessages((prev) =>{
         var addCalls = []

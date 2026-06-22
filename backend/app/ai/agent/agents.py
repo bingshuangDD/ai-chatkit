@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field
 from ai.agent.Ameath import ameath_agent
+from ai.agent.Mornye import mornye_agent
 from ai.agent.oa_assistant import oa_assistant
 from ai.agent.multi_agent import supervisor_agent
 
@@ -31,6 +32,7 @@ agents: dict[str, Agent] = {
     "oa-assistant": Agent(description="A oa intelligent assistant.", graph=oa_assistant),
     "multi-agent-supervisor": Agent(description="A supervisor for multi-agent assistant.", graph=supervisor_agent),
     "character-ameath": Agent(description="爱弥斯，高塔的守护者", graph=ameath_agent),
+    "character-mornye": Agent(description="莫宁，追逐星空的深空联合学者", graph=mornye_agent),
 }
 
 ## Get agent by agent_id

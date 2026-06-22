@@ -2,6 +2,7 @@ import React from 'react';
 import { Layout, Menu } from 'antd';
 import NewChatButton from './NewChatButton';
 import { useLayoutContext } from '../layout-context'
+import { AgentTheme } from '../config/agentThemeConfig';
 
 
 interface SiderComponentProps {
@@ -12,14 +13,7 @@ interface SiderComponentProps {
   handlerNewChat: () => void;
   items: Array<{ key: string; label: React.ReactNode }>;
   onSelectSession: (key: string) => void;
-  theme: {
-    primary: string;
-    secondary: string;
-    surface: string;
-    text: string;
-    accent: string;
-    border: string;
-  };
+  theme: AgentTheme;
 }
 
 const { Sider } = Layout;
@@ -35,6 +29,7 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
   theme
 }) => {
   const { currentThreadId, setCurrentThreadId } = useLayoutContext()
+  const selectedKeys = currentThreadId ? [currentThreadId] : [];
 
   return (
     <Sider
@@ -54,8 +49,8 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
         <Menu
           theme="dark"
           className="max-h-[calc(100vh-180px)] overflow-y-auto transition-colors duration-500 themed-agent-menu"
-          defaultSelectedKeys={[currentThreadId]}
-          selectedKeys={[currentThreadId]}
+          defaultSelectedKeys={selectedKeys}
+          selectedKeys={selectedKeys}
           mode="inline"
           items={items}
           onSelect={({ key }) => {
